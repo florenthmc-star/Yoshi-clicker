@@ -91,11 +91,11 @@
         /* Animation de respiration (Idle) pour Yoshi */
         @keyframes idleYoshi {
             0% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-12px) scale(1.03); } /* Il monte et grossit un tout petit peu */
+            50% { transform: translateY(-12px) scale(1.03); }
             100% { transform: translateY(0px) scale(1); }
         }
 
-        /* Utilisation de l'image locale avec l'animation de respiration */
+        /* L'image de Yoshi */
         .yoshi-img {
             max-width: 100%;
             max-height: 100%;
@@ -104,27 +104,27 @@
             user-select: none;
             -webkit-user-drag: none;
             animation: idleYoshi 2s ease-in-out infinite;
-        }
-
-        /* Animation quand on clique (Effet de mastication) */
-        .yoshi-container:active .yoshi-img {
-            animation: none; /* On coupe la respiration pendant le clic */
-            transform: scale(0.85) rotate(-8deg); /* Yoshi s'écrase et penche en arrière */
             transition: transform 0.05s ease-out;
         }
 
-        /* Animation des petits Goombas flottants avec rotation */
-        @keyframes floatUp {
+        /* Petit effet d'impact quand on clique */
+        .yoshi-container:active .yoshi-img {
+            animation: none; 
+            transform: scale(0.92);
+        }
+
+        /* Nouvelle animation explosive pour les Goombas */
+        @keyframes popOut {
             0% { 
                 opacity: 1; 
-                transform: translateY(0) scale(1) rotate(0deg); 
+                transform: translate(0, 0) scale(0.5); 
             }
             50% { 
-                transform: translateY(-40px) scale(1.3) rotate(15deg); /* Il grossit et penche à droite */
+                transform: translate(var(--tx), var(--ty)) scale(1.2) rotate(15deg); 
             }
             100% { 
                 opacity: 0; 
-                transform: translateY(-90px) scale(1) rotate(-15deg); /* Il disparait et penche à gauche */
+                transform: translate(calc(var(--tx) * 1.2), calc(var(--ty) + 40px)) scale(0.8) rotate(-20deg); 
             }
         }
 
@@ -137,12 +137,13 @@
             font-weight: 900;
             font-size: 1.5rem;
             pointer-events: none;
-            animation: floatUp 0.8s ease-out forwards;
-            text-shadow: 1px 1px 0 #fff;
+            animation: popOut 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            text-shadow: 2px 2px 0 #fff;
+            z-index: 10;
         }
 
         .floating-goomba img {
-            width: 40px; /* Taille du petit goomba qui vole */
+            width: 40px; 
             height: auto;
         }
 
@@ -214,7 +215,6 @@
             text-align: center;
         }
         
-        /* Message d'erreur si l'image manque */
         .missing-img-text {
             display: none;
             color: red;
@@ -237,7 +237,7 @@
             
             <div class="yoshi-container" id="yoshi-btn">
                 <img src="yoshi.png" alt="Yoshi" class="yoshi-img" onerror="this.style.display='none'; document.getElementById('error-msg').style.display='block';">
-                <div id="error-msg" class="missing-img-text">Mets une image nommée "yoshi.png" dans ton dossier pour voir Yoshi !</div>
+                <div id="error-msg" class="missing-img-text">Vérifie tes images yoshi.png et goomba.png sur GitHub !</div>
             </div>
         </div>
 
@@ -279,6 +279,7 @@
 
         const scoreEl = document.getElementById('score');
         const yoshiBtn = document.getElementById('yoshi-btn');
+        const yoshiImageElement = document.querySelector('.yoshi-img');
         const btnUpgrade = document.getElementById('buy-upgrade');
         const clickLevelEl = document.getElementById('click-level');
         const upgradeCostEl = document.getElementById('upgrade-cost');
@@ -301,34 +302,54 @@
             btnAutoClicker.disabled = goombas < autoClickerCost;
         }
 
-        // Animation avec l'image du Goomba
+        // --- Changement d'image au clic (Mastication) ---
+        yoshiBtn.addEventListener('mousedown', () => {
+            yoshiImageElement.src = 'yoshi_mange.png'; 
+        });
+
+        yoshiBtn.addEventListener('mouseup', () => {
+            yoshiImageElement.src = 'yoshi.png';
+        });
+
+        yoshiBtn.addEventListener('mouseleave', () => {
+            yoshiImageElement.src = 'yoshi.png';
+        });
+
+        // --- Physique des Goombas ---
         function createFloatingGoomba(e) {
             const floater = document.createElement('div');
             floater.classList.add('floating-goomba');
-            
             floater.innerHTML = `<img src="goomba.png" onerror="this.style.display='none'"> +${clickPower}`;
             
             const rect = yoshiBtn.getBoundingClientRect();
-            const randomX = Math.floor(Math.random() * 40) - 20; 
-            const x = e.clientX - rect.left - 20 + randomX; 
-            const y = e.clientY - rect.top - 20;
+            const startX = e.clientX - rect.left - 20; 
+            const startY = e.clientY - rect.top - 20;
             
-            floater.style.left = `${x}px`;
-            floater.style.top = `${y}px`;
+            floater.style.left = `${startX}px`;
+            floater.style.top = `${startY}px`;
+
+            // Direction aléatoire pour l'explosion
+            const randomX = (Math.random() - 0.5) * 160; 
+            const randomY = -50 - (Math.random() * 70); 
+
+            floater.style.setProperty('--tx', `${randomX}px`);
+            floater.style.setProperty('--ty', `${randomY}px`);
             
             yoshiBtn.appendChild(floater);
             
             setTimeout(() => {
                 floater.remove();
-            }, 800);
+            }, 600);
         }
 
+        // --- Clic principal pour gagner des points ---
         yoshiBtn.addEventListener('click', (e) => {
             goombas += clickPower;
             createFloatingGoomba(e);
             updateUI();
         });
 
+        // --- Achats Boutique ---
         btnUpgrade.addEventListener('click', () => {
             if (goombas >= upgradeCost) {
                 goombas -= upgradeCost;
@@ -348,6 +369,7 @@
             }
         });
 
+        // --- Boucle Auto-clicker ---
         setInterval(() => {
             if (autoClickers > 0) {
                 goombas += autoClickers;
@@ -355,6 +377,7 @@
             }
         }, 1000);
 
+        // Initialisation
         updateUI();
     </script>
 </body>
