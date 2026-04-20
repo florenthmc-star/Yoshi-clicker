@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yoshi Clicker</title>
+    <title>Yoshi Clicker Pro</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
 
@@ -11,7 +11,7 @@
             --primary: #43b047;
             --secondary: #e52521;
             --background: #5c94fc;
-            --panel-bg: rgba(255, 255, 255, 0.9);
+            --panel-bg: rgba(255, 255, 255, 0.95);
             --text: #333;
         }
 
@@ -30,6 +30,8 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            /* Empêche la sélection de texte accidentelle en cliquant vite */
+            user-select: none; 
         }
 
         .game-container {
@@ -39,8 +41,22 @@
             height: 600px;
             background: var(--panel-bg);
             border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
             overflow: hidden;
+            transition: transform 0.1s;
+        }
+
+        /* --- Effet de Screen Shake (Tremblement) --- */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            40% { transform: translate(1px, -2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        .shake-active {
+            animation: shake 0.15s ease-in-out;
         }
 
         /* --- Section Gauche : Le Jeu --- */
@@ -74,46 +90,52 @@
         }
 
         #score {
-            font-size: 2.5rem;
+            font-size: 3rem;
             display: block;
+            line-height: 1;
+            margin-top: 5px;
         }
 
+        /* --- YOSHI SPRITE SHEET --- */
         .yoshi-container {
             position: relative;
             cursor: pointer;
             width: 250px;
             height: 250px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        /* Animation de respiration (Idle) pour Yoshi */
-        @keyframes idleYoshi {
-            0% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-12px) scale(1.03); }
-            100% { transform: translateY(0px) scale(1); }
-        }
-        /* L'image de Yoshi */
-        .yoshi-img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            object-position: bottom center; /* NOUVEAU : Garde les pieds de Yoshi fixés vers le bas */
             filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
-            user-select: none;
-            -webkit-user-drag: none;
+            /* Animation de respiration douce */
             animation: idleYoshi 2s ease-in-out infinite;
-            transition: transform 0.05s ease-out;
         }
 
-        /* Petit effet d'impact quand on clique */
-        .yoshi-container:active .yoshi-img {
-            animation: none; 
-            transform: scale(0.92);
+        @keyframes idleYoshi {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
         }
 
-        /* Nouvelle animation explosive pour les Goombas */
+        .yoshi-sprite {
+            width: 100%;
+            height: 100%;
+            /* L'image doit contenir 2 frames côte à côte */
+            background-image: url('yoshi_sprites.png');
+            /* On dit que l'image fait 2 fois la largeur de la boîte */
+            background-size: 200% 100%; 
+            /* On montre la partie gauche (Frame 1) */
+            background-position: 0% 0; 
+            background-repeat: no-repeat;
+        }
+
+        /* Quand on clique (Sprite Sheet Magie !) */
+        .yoshi-container:active .yoshi-sprite {
+            /* On décale l'image pour montrer la partie droite (Frame 2) */
+            background-position: 100% 0; 
+        }
+
+        .yoshi-container:active {
+            animation: none; /* Stoppe la respiration pendant le clic */
+        }
+
+        /* --- Physique des Goombas --- */
         @keyframes popOut {
             0% { 
                 opacity: 1; 
@@ -124,7 +146,7 @@
             }
             100% { 
                 opacity: 0; 
-                transform: translate(calc(var(--tx) * 1.2), calc(var(--ty) + 40px)) scale(0.8) rotate(-20deg); 
+                transform: translate(calc(var(--tx) * 1.5), calc(var(--ty) + 60px)) scale(0.8) rotate(-20deg); 
             }
         }
 
@@ -143,8 +165,9 @@
         }
 
         .floating-goomba img {
-            width: 40px; 
+            width: 45px; 
             height: auto;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3));
         }
 
         /* --- Section Droite : La Boutique --- */
@@ -213,21 +236,24 @@
             font-size: 0.9rem;
             color: #777;
             text-align: center;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
         }
-        
-        .missing-img-text {
-            display: none;
-            color: red;
-            font-weight: bold;
+
+        .warning-text {
+            position: absolute;
+            bottom: 10px;
+            font-size: 0.8rem;
+            color: #888;
             text-align: center;
-            font-size: 1.2rem;
-            padding: 20px;
         }
     </style>
 </head>
 <body>
 
-    <div class="game-container">
+    <div class="game-container" id="game-window">
         <div class="main-area">
             <h1>Yoshi Clicker</h1>
             <div class="score-board">
@@ -236,9 +262,10 @@
             </div>
             
             <div class="yoshi-container" id="yoshi-btn">
-                <img src="yoshi.png" alt="Yoshi" class="yoshi-img" onerror="this.style.display='none'; document.getElementById('error-msg').style.display='block';">
-                <div id="error-msg" class="missing-img-text">Vérifie tes images yoshi.png et goomba.png sur GitHub !</div>
+                <div class="yoshi-sprite"></div>
             </div>
+            
+            <div class="warning-text">Il faut les images "yoshi_sprites.png" et "goomba.png" sur le GitHub !</div>
         </div>
 
         <div class="shop-area">
@@ -263,13 +290,14 @@
             </button>
 
             <div class="stats">
-                <p>Puissance de clic : <span id="click-power-stat">1</span></p>
-                <p>Goombas par seconde : <span id="gps-stat">0</span></p>
+                <p>Puissance de clic : <strong id="click-power-stat">1</strong></p>
+                <p>Goombas par seconde : <strong id="gps-stat">0</strong></p>
             </div>
         </div>
     </div>
 
     <script>
+        // --- Variables du Jeu ---
         let goombas = 0;
         let clickPower = 1;
         let autoClickers = 0;
@@ -277,18 +305,28 @@
         let upgradeLevel = 1;
         let upgradeCost = 15;
 
+        // --- Éléments DOM ---
         const scoreEl = document.getElementById('score');
         const yoshiBtn = document.getElementById('yoshi-btn');
-        const yoshiImageElement = document.querySelector('.yoshi-img');
+        const gameWindow = document.getElementById('game-window');
+        
         const btnUpgrade = document.getElementById('buy-upgrade');
         const clickLevelEl = document.getElementById('click-level');
         const upgradeCostEl = document.getElementById('upgrade-cost');
+        
         const btnAutoClicker = document.getElementById('buy-autoclicker');
         const autoClickersOwnedEl = document.getElementById('autoclickers-owned');
         const autoClickerCostEl = document.getElementById('autoclicker-cost');
+        
         const clickPowerStatEl = document.getElementById('click-power-stat');
         const gpsStatEl = document.getElementById('gps-stat');
 
+        // --- Audio (Le son culte de Yoshi !) ---
+        // Utilisation d'un son hébergé publiquement. Le volume est réglé à 40%.
+        const tongueSound = new Audio('https://www.myinstants.com/media/sounds/yoshi-tongue.mp3');
+        tongueSound.volume = 0.4;
+
+        // --- Mise à jour de l'interface ---
         function updateUI() {
             scoreEl.innerText = Math.floor(goombas);
             clickLevelEl.innerText = upgradeLevel;
@@ -298,54 +336,61 @@
             clickPowerStatEl.innerText = clickPower;
             gpsStatEl.innerText = autoClickers;
 
+            // Désactivation des boutons si pas assez de points
             btnUpgrade.disabled = goombas < upgradeCost;
             btnAutoClicker.disabled = goombas < autoClickerCost;
         }
 
-        // --- Changement d'image au clic (Mastication) ---
-        yoshiBtn.addEventListener('mousedown', () => {
-            yoshiImageElement.src = 'yoshi_mange.png'; 
-        });
-
-        yoshiBtn.addEventListener('mouseup', () => {
-            yoshiImageElement.src = 'yoshi.png';
-        });
-
-        yoshiBtn.addEventListener('mouseleave', () => {
-            yoshiImageElement.src = 'yoshi.png';
-        });
-
-        // --- Physique des Goombas ---
+        // --- Création de l'explosion de Goomba ---
         function createFloatingGoomba(e) {
             const floater = document.createElement('div');
             floater.classList.add('floating-goomba');
+            
+            // Image du goomba + le texte du score rapporté
             floater.innerHTML = `<img src="goomba.png" onerror="this.style.display='none'"> +${clickPower}`;
             
             const rect = yoshiBtn.getBoundingClientRect();
-            const startX = e.clientX - rect.left - 20; 
-            const startY = e.clientY - rect.top - 20;
+            // On centre l'apparition sur la bouche de Yoshi
+            const startX = (e.clientX || rect.left + rect.width/2) - rect.left - 20; 
+            const startY = (e.clientY || rect.top + rect.height/2) - rect.top - 20;
             
             floater.style.left = `${startX}px`;
             floater.style.top = `${startY}px`;
 
-            // Direction aléatoire pour l'explosion
-            const randomX = (Math.random() - 0.5) * 160; 
-            const randomY = -50 - (Math.random() * 70); 
+            // Calcul d'une trajectoire explosive aléatoire
+            const randomX = (Math.random() - 0.5) * 180; 
+            const randomY = -60 - (Math.random() * 80); 
 
             floater.style.setProperty('--tx', `${randomX}px`);
             floater.style.setProperty('--ty', `${randomY}px`);
             
             yoshiBtn.appendChild(floater);
             
+            // Nettoyage après l'animation
             setTimeout(() => {
                 floater.remove();
             }, 600);
         }
 
-        // --- Clic principal pour gagner des points ---
-        yoshiBtn.addEventListener('click', (e) => {
+        // --- Événement Principal : Clic sur Yoshi ---
+        // On utilise mousedown pour que ce soit ultra réactif
+        yoshiBtn.addEventListener('mousedown', (e) => {
+            // 1. Jouer le son
+            tongueSound.currentTime = 0; // Permet de rejouer le son même si le précédent n'est pas fini
+            tongueSound.play().catch(err => console.log("Son bloqué par le navigateur", err));
+
+            // 2. Faire trembler l'écran (Screen Shake)
+            gameWindow.classList.remove('shake-active');
+            void gameWindow.offsetWidth; // Petite astuce pour redémarrer l'animation CSS
+            gameWindow.classList.add('shake-active');
+
+            // 3. Ajouter les points
             goombas += clickPower;
+
+            // 4. Lancer les particules
             createFloatingGoomba(e);
+
+            // 5. Mettre à jour les textes
             updateUI();
         });
 
@@ -369,7 +414,7 @@
             }
         });
 
-        // --- Boucle Auto-clicker ---
+        // --- Boucle Auto-clicker (chaque seconde) ---
         setInterval(() => {
             if (autoClickers > 0) {
                 goombas += autoClickers;
@@ -377,7 +422,7 @@
             }
         }, 1000);
 
-        // Initialisation
+        // Initialisation au chargement
         updateUI();
     </script>
 </body>
