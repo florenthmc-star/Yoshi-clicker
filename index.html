@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yoshi Clicker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+        :root {
+            --primary: #43b047;
+            --secondary: #e52521;
+            --background: #5c94fc;
+            --panel-bg: rgba(255, 255, 255, 0.9);
+            --text: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-image: linear-gradient(to bottom, #5c94fc 0%, #a0c4ff 100%);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .game-container {
+            display: flex;
+            width: 900px;
+            max-width: 95%;
+            height: 600px;
+            background: var(--panel-bg);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        /* --- Section Gauche : Le Jeu --- */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+            border-right: 3px dashed #ccc;
+            position: relative;
+        }
+
+        h1 {
+            color: var(--secondary);
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 0px #fff;
+            margin-bottom: 10px;
+        }
+
+        .score-board {
+            background: var(--primary);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(67, 176, 71, 0.4);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        #score {
+            font-size: 2.5rem;
+            display: block;
+        }
+
+        .yoshi-container {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.1s;
+            width: 250px;
+            height: 250px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .yoshi-container:active {
+            transform: scale(0.92);
+        }
+
+        /* Utilisation de l'image locale */
+        .yoshi-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        /* Animation des petits Goombas flottants */
+        .floating-goomba {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--secondary);
+            font-weight: 900;
+            font-size: 1.5rem;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            text-shadow: 1px 1px 0 #fff;
+        }
+
+        .floating-goomba img {
+            width: 40px; /* Taille du petit goomba qui vole */
+            height: auto;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.2); }
+        }
+
+        /* --- Section Droite : La Boutique --- */
+        .shop-area {
+            width: 350px;
+            padding: 30px;
+            background: #f8f9fa;
+            overflow-y: auto;
+        }
+
+        .shop-area h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .upgrade-btn {
+            width: 100%;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .upgrade-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+        }
+
+        .upgrade-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #eee;
+        }
+
+        .upgrade-info h3 {
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 5px;
+        }
+
+        .upgrade-info p {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .cost {
+            font-weight: bold;
+            color: var(--secondary);
+            background: #ffe5e5;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .stats {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #777;
+            text-align: center;
+        }
+        
+        /* Message d'erreur si l'image manque */
+        .missing-img-text {
+            display: none;
+            color: red;
+            font-weight: bold;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="main-area">
+            <h1>Yoshi Clicker</h1>
+            <div class="score-board">
+                Goombas Avalés
+                <span id="score">0</span>
+            </div>
+            
+            <div class="yoshi-container" id="yoshi-btn">
+                <img src="yoshi.png" alt="Yoshi" class="yoshi-img" onerror="this.style.display='none'; document.getElementById('error-msg').style.display='block';">
+                <div id="error-msg" class="missing-img-text">Mets une image nommée "yoshi.png" dans ton dossier !</div>
+            </div>
+        </div>
+
+        <div class="shop-area">
+            <h2>Boutique 🍄</h2>
+
+            <button class="upgrade-btn" id="buy-upgrade" disabled>
+                <div class="upgrade-info">
+                    <h3>Gros Appétit</h3>
+                    <p>+1 Goomba par clic</p>
+                    <p>Niveau : <span id="click-level">1</span></p>
+                </div>
+                <div class="cost"><span id="upgrade-cost">15</span> 🍄</div>
+            </button>
+
+            <button class="upgrade-btn" id="buy-autoclicker" disabled>
+                <div class="upgrade-info">
+                    <h3>Bébé Yoshi (Auto)</h3>
+                    <p>Mange 1 Goomba / sec</p>
+                    <p>Possédés : <span id="autoclickers-owned">0</span></p>
+                </div>
+                <div class="cost"><span id="autoclicker-cost">50</span> 🍄</div>
+            </button>
+
+            <div class="stats">
+                <p>Puissance de clic : <span id="click-power-stat">1</span></p>
+                <p>Goombas par seconde : <span id="gps-stat">0</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let goombas = 0;
+        let clickPower = 1;
+        let autoClickers = 0;
+        let autoClickerCost = 50;
+        let upgradeLevel = 1;
+        let upgradeCost = 15;
+
+        const scoreEl = document.getElementById('score');
+        const yoshiBtn = document.getElementById('yoshi-btn');
+        const btnUpgrade = document.getElementById('buy-upgrade');
+        const clickLevelEl = document.getElementById('click-level');
+        const upgradeCostEl = document.getElementById('upgrade-cost');
+        const btnAutoClicker = document.getElementById('buy-autoclicker');
+        const autoClickersOwnedEl = document.getElementById('autoclickers-owned');
+        const autoClickerCostEl = document.getElementById('autoclicker-cost');
+        const clickPowerStatEl = document.getElementById('click-power-stat');
+        const gpsStatEl = document.getElementById('gps-stat');
+
+        function updateUI() {
+            scoreEl.innerText = Math.floor(goombas);
+            clickLevelEl.innerText = upgradeLevel;
+            upgradeCostEl.innerText = upgradeCost;
+            autoClickersOwnedEl.innerText = autoClickers;
+            autoClickerCostEl.innerText = autoClickerCost;
+            clickPowerStatEl.innerText = clickPower;
+            gpsStatEl.innerText = autoClickers;
+
+            btnUpgrade.disabled = goombas < upgradeCost;
+            btnAutoClicker.disabled = goombas < autoClickerCost;
+        }
+
+        // Animation avec l'image du Goomba
+        function createFloatingGoomba(e) {
+            const floater = document.createElement('div');
+            floater.classList.add('floating-goomba');
+            
+            // On insère l'image locale goomba.png et le texte du score
+            floater.innerHTML = `<img src="goomba.png" onerror="this.style.display='none'"> +${clickPower}`;
+            
+            const rect = yoshiBtn.getBoundingClientRect();
+            // Position aléatoire autour du clic pour plus de dynamisme
+            const randomX = Math.floor(Math.random() * 40) - 20; 
+            const x = e.clientX - rect.left - 20 + randomX; 
+            const y = e.clientY - rect.top - 20;
+            
+            floater.style.left = `${x}px`;
+            floater.style.top = `${y}px`;
+            
+            yoshiBtn.appendChild(floater);
+            
+            setTimeout(() => {
+                floater.remove();
+            }, 800);
+        }
+
+        yoshiBtn.addEventListener('click', (e) => {
+            goombas += clickPower;
+            createFloatingGoomba(e);
+            updateUI();
+        });
+
+        btnUpgrade.addEventListener('click', () => {
+            if (goombas >= upgradeCost) {
+                goombas -= upgradeCost;
+                clickPower++;
+                upgradeLevel++;
+                upgradeCost = Math.floor(upgradeCost * 1.8);
+                updateUI();
+            }
+        });
+
+        btnAutoClicker.addEventListener('click', () => {
+            if (goombas >= autoClickerCost) {
+                goombas -= autoClickerCost;
+                autoClickers++;
+                autoClickerCost = Math.floor(autoClickerCost * 1.3);
+                updateUI();
+            }
+        });
+
+        setInterval(() => {
+            if (autoClickers > 0) {
+                goombas += autoClickers;
+                updateUI();
+            }
+        }, 1000);
+
+        updateUI();
+    </script>
+</body>
+</html>
